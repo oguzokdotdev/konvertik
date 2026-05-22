@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Конвертик</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Russo+One&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            russo: ['Russo One', 'sans-serif']
+          },
+          colors: {
+            bg: '#000000',
+            card: '#090909',
+            border: '#1A1A1A',
+            accent: '#3b82f6',
+            success: '#10b981'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { background: #000000; }
+    .fmt-btn { transition: all 0.15s; }
+    .run-btn { transition: transform 0.1s ease, opacity 0.15s; }
+    .run-btn:not(:disabled):hover { transform: scale(0.99); }
+    .run-btn:not(:disabled):active { transform: scale(0.97); }
+    .run-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+    .upload-zone { transition: border-color 0.2s, background 0.2s; }
+    .upload-zone:hover { border-color: #3b82f6; background: rgba(59,130,246,0.03); }
+  </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center font-sans text-white">
+
+  <div class="w-full max-w-5xl px-6 py-12">
+
+    <header class="flex justify-between items-end mb-8">
+      <div>
+        <div class="font-russo text-[28px] tracking-[0.01em] select-none leading-none">
+          Конвертик<span class="text-accent">.</span>
+        </div>
+      </div>
+
+      <p class="text-sm text-zinc-500 text-right max-w-xs leading-relaxed">
+        FFmpeg с человеческим лицом.<br>
+        Без рекламы и без ожидания.
+      </p>
+    </header>
+
+    <div class="grid gap-6" style="grid-template-columns: 1.6fr 1fr;">
+
+      <div class="rounded-xl border border-border p-8" style="background:#090909;">
+
+        <p class="text-xs font-bold tracking-[0.15em] text-zinc-500 uppercase mb-5">
+          ШАГ 1 — ФАЙЛ
+        </p>
+
+        <div class="relative border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center min-h-[240px] cursor-pointer upload-zone">
+          <input type="file" id="fileInput" class="absolute inset-0 opacity-0 cursor-pointer">
+
+          <svg width="48" height="48" viewBox="0 0 42 42" fill="none" class="opacity-90">
+            <rect x="7" y="13" width="28" height="22" rx="3.5" stroke="white" stroke-width="1.6"/>
+            <path d="M14 13V11C14 9.34315 15.3431 8 17 8H25C26.6569 8 28 9.34315 28 11V13" stroke="white" stroke-width="1.6"/>
+            <path d="M21 18V30M21 18L17 22.5M21 18L25 22.5" stroke="white" stroke-width="1.6"/>
+          </svg>
+
+          <p class="text-base text-zinc-400 mt-5">Перетащите файл или кликните</p>
+        </div>
+
+        <p class="text-xs font-bold tracking-[0.15em] text-zinc-500 uppercase mt-9 mb-4">
+          ШАГ 2 — ФОРМАТ
+        </p>
+
+        <div class="border border-border rounded-lg py-6 px-5 text-sm text-zinc-500 text-center bg-white/[0.02] border-dashed">
+          Сначала загрузите файл для выбора формата
+        </div>
+
+        <button class="w-full mt-8 bg-white text-black rounded-xl py-5 text-base font-bold run-btn uppercase tracking-wider" disabled>
+          Запустить конвертацию
+        </button>
+
+      </div>
+
+      <div class="flex flex-col gap-6">
+
+        <div class="rounded-xl border border-border p-7" style="background:#090909;">
+          <p class="text-xs font-bold tracking-[0.15em] text-zinc-500 uppercase mb-4">
+            ЛИМИТЫ
+          </p>
+
+          <p class="text-lg font-bold">Бесплатно</p>
+          <p class="text-sm text-zinc-400 mt-1">500 MB / 100 файлов в день</p>
+        </div>
+
+        <div class="rounded-xl border border-border p-7 flex-1" style="background:#090909;">
+          <p class="text-xs font-bold tracking-[0.15em] text-zinc-500 uppercase mb-4">
+            ЗАДАЧИ
+          </p>
+
+          <p class="text-sm text-zinc-600 leading-relaxed">
+            Здесь появится история ваших конвертаций
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
