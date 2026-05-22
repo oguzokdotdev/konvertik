@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "konvertik"
+version = "0.1.0"
+description = "Not An Another Paid FFmpeg"
+authors = ["oguzok.dev <oguzokdev.official@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = {extras = ["standard"], version = "^0.136.1"}
+sqlmodel = "^0.0.38"
+aiosqlite = "^0.22.1"
+taskiq = "^0.12.4"
+pydantic-settings = "^2.14.1"
+aiofiles = "^25.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
