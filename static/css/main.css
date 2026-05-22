@@ -1,0 +1,8 @@
+body { background: #000000; }
+.fmt { transition: all 0.15s; }
+.run-btn { transition: transform 0.1s ease, opacity 0.15s; }
+.run-btn:not(:disabled):hover { transform: scale(0.99); }
+.run-btn:not(:disabled):active { transform: scale(0.97); }
+.run-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+.upload-zone { transition: border-color 0.2s, background 0.2s; }
+.upload-zone:hover { border-color: #3b82f6; background: rgba(59,130,246,0.03); }

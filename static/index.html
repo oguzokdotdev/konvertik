@@ -30,16 +30,8 @@
     }
   </script>
 
-  <style>
-    body { background: #000000; }
-    .fmt-btn { transition: all 0.15s; }
-    .run-btn { transition: transform 0.1s ease, opacity 0.15s; }
-    .run-btn:not(:disabled):hover { transform: scale(0.99); }
-    .run-btn:not(:disabled):active { transform: scale(0.97); }
-    .run-btn:disabled { opacity: 0.2; cursor: not-allowed; }
-    .upload-zone { transition: border-color 0.2s, background 0.2s; }
-    .upload-zone:hover { border-color: #3b82f6; background: rgba(59,130,246,0.03); }
-  </style>
+  <link rel="stylesheet" href="css/main.css">
+
 </head>
 
 <body class="min-h-screen flex items-center justify-center font-sans text-white">
@@ -52,7 +44,6 @@
           Конвертик<span class="text-accent">.</span>
         </div>
       </div>
-
       <p class="text-sm text-zinc-500 text-right max-w-xs leading-relaxed">
         FFmpeg с человеческим лицом.<br>
         Без рекламы и без ожидания.
@@ -61,14 +52,16 @@
 
     <div class="grid gap-6" style="grid-template-columns: 1.6fr 1fr;">
 
+      <!-- LEFT COL -->
       <div class="rounded-xl border border-border p-8" style="background:#090909;">
 
+        <!-- STEP 1 FILE -->
         <p class="text-xs font-bold tracking-[0.15em] text-zinc-500 uppercase mb-5">
           ШАГ 1 — ФАЙЛ
         </p>
 
-        <div class="relative border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center min-h-[240px] cursor-pointer upload-zone">
-          <input type="file" id="fileInput" class="absolute inset-0 opacity-0 cursor-pointer">
+        <div class="relative border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center min-h-[240px] cursor-pointer upload-zone" id="drop">
+          <input type="file" id="fileIn" class="absolute inset-0 opacity-0 cursor-pointer">
 
           <svg width="48" height="48" viewBox="0 0 42 42" fill="none" class="opacity-90">
             <rect x="7" y="13" width="28" height="22" rx="3.5" stroke="white" stroke-width="1.6"/>
@@ -77,46 +70,118 @@
           </svg>
 
           <p class="text-base text-zinc-400 mt-5">Перетащите файл или кликните</p>
+          <div class="drop-name text-sm text-accent mt-4 hidden" id="dropName"></div>
         </div>
 
+        <!-- STEP 2 FORMAT -->
         <p class="text-xs font-bold tracking-[0.15em] text-zinc-500 uppercase mt-9 mb-4">
           ШАГ 2 — ФОРМАТ
         </p>
 
-        <div class="border border-border rounded-lg py-6 px-5 text-sm text-zinc-500 text-center bg-white/[0.02] border-dashed">
+        <div class="border border-border rounded-lg py-6 px-5 text-sm text-zinc-500 text-center bg-white/[0.02] border-dashed" id="statusEmpty">
           Сначала загрузите файл для выбора формата
         </div>
 
-        <button class="w-full mt-8 bg-white text-black rounded-xl py-5 text-base font-bold run-btn uppercase tracking-wider" disabled>
+        <!-- FORMATS (hidden by default) -->
+        <div id="formatContainer" class="hidden">
+          <div class="space-y-4 mt-4">
+            <div>
+              <p class="text-xs font-bold tracking-[0.1em] text-zinc-400 uppercase mb-2">Видео</p>
+              <div class="flex flex-wrap gap-2">
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="mp4">MP4</button>
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="webm">WEBM</button>
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="avi">AVI</button>
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="mov">MOV</button>
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="mkv">MKV</button>
+              </div>
+            </div>
+            <div>
+              <p class="text-xs font-bold tracking-[0.1em] text-zinc-400 uppercase mb-2">Аудио</p>
+              <div class="flex flex-wrap gap-2">
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="mp3">MP3</button>
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="wav">WAV</button>
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="flac">FLAC</button>
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="ogg">OGG</button>
+                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="aac">AAC</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROGRESS BAR -->
+        <div class="w-full h-1 bg-zinc-800 rounded-full mt-8 hidden overflow-hidden" id="progWrap">
+          <div class="h-full bg-accent rounded-full transition-all" id="progFill" style="width: 0%"></div>
+        </div>
+
+        <!-- RUN BUTTON -->
+        <button class="w-full mt-8 bg-white text-black rounded-xl py-5 text-base font-bold run-btn uppercase tracking-wider disabled:opacity-20 disabled:cursor-not-allowed transition" id="runBtn" disabled>
           Запустить конвертацию
         </button>
 
       </div>
 
+      <!-- RIGHT COL -->
       <div class="flex flex-col gap-6">
 
+        <!-- LIMITS -->
         <div class="rounded-xl border border-border p-7" style="background:#090909;">
           <p class="text-xs font-bold tracking-[0.15em] text-zinc-500 uppercase mb-4">
             ЛИМИТЫ
           </p>
-
           <p class="text-lg font-bold">Бесплатно</p>
           <p class="text-sm text-zinc-400 mt-1">500 MB / 100 файлов в день</p>
         </div>
 
-        <div class="rounded-xl border border-border p-7 flex-1" style="background:#090909;">
+        <!-- HISTORY / STATUS -->
+        <div class="rounded-xl border border-border p-7 flex-1 overflow-y-auto" style="background:#090909;">
           <p class="text-xs font-bold tracking-[0.15em] text-zinc-500 uppercase mb-4">
             ЗАДАЧИ
           </p>
 
-          <p class="text-sm text-zinc-600 leading-relaxed">
-            Здесь появится история ваших конвертаций
-          </p>
+          <!-- STATUS BLOCK -->
+          <div class="mb-6 hidden" id="statusBlock">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-2 h-2 bg-zinc-600 rounded-full" id="dot"></div>
+              <span class="text-xs text-zinc-400 uppercase tracking-wide" id="statusLbl">ожидание</span>
+            </div>
+            
+            <table class="w-full text-xs text-zinc-300 hidden" id="ttable">
+              <tr class="border-b border-border">
+                <td class="py-2 text-zinc-500">ID</td>
+                <td class="py-2" id="tId">—</td>
+              </tr>
+              <tr class="border-b border-border">
+                <td class="py-2 text-zinc-500">Файл</td>
+                <td class="py-2" id="tFile">—</td>
+              </tr>
+              <tr class="border-b border-border">
+                <td class="py-2 text-zinc-500">→</td>
+                <td class="py-2" id="tFmt">—</td>
+              </tr>
+              <tr>
+                <td class="py-2 text-zinc-500">Статус</td>
+                <td class="py-2" id="tStatus">—</td>
+              </tr>
+            </table>
+
+            <a class="inline-block mt-4 text-accent text-xs font-bold border border-accent px-3 py-2 rounded hover:bg-accent/10 transition hidden" id="dlBtn" href="#" download>
+              ↓ СКАЧАТЬ
+            </a>
+          </div>
+
+          <!-- HISTORY -->
+          <div id="histList">
+            <p class="text-xs text-zinc-500">Здесь появится история ваших конвертаций</p>
+          </div>
+
         </div>
 
       </div>
 
     </div>
   </div>
+
+  <script src="js/app.js"></script>
+
 </body>
 </html>

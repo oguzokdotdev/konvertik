@@ -1,6 +1,8 @@
+from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.db import get_session
@@ -19,12 +21,26 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
     status_code=status.HTTP_201_CREATED,
 )
 async def upload_file(
-    file: UploadFile,
-    target_format: str,
-    plan_tier: str = "free",
+    file: UploadFile = File(...),
+    target_format: str = Query(...),
+    plan_tier: str = Query("free"),
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
-    """Accept a file upload and enqueue a conversion task."""
+    """Accept a file upload and enqueue a conversion task.
+
+    Args:
+        file: The uploaded media file.
+        target_format: Desired output format (e.g. mp3, mp4).
+        plan_tier: User plan — 'free' or 'pro'.
+        session: Async database session.
+
+    Raises:
+        HTTPException 413: File exceeds plan size limit.
+        HTTPException 429: Daily conversion limit reached.
+
+    Returns:
+        TaskResponse with the created task ID and initial status.
+    """
     data = await file.read()
     file_size = len(data)
 
@@ -55,12 +71,46 @@ async def upload_file(
     return TaskResponse.model_validate(task)
 
 
+@router.get("/", response_model=List[TaskResponse])
+async def list_tasks(
+    limit: int = Query(12, ge=1, le=50),
+    session: AsyncSession = Depends(get_session),
+) -> List[TaskResponse]:
+    """Return recent conversion tasks ordered by creation time.
+
+    Args:
+        limit: Maximum number of tasks to return (1–50).
+        session: Async database session.
+
+    Returns:
+        List of TaskResponse ordered newest first.
+    """
+    statement = (
+        select(ConversionTask)
+        .order_by(ConversionTask.created_at.desc())
+        .limit(limit)
+    )
+    results = await session.exec(statement)
+    return [TaskResponse.model_validate(t) for t in results.all()]
+
+
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
     task_id: UUID,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
-    """Get conversion task status by ID."""
+    """Get conversion task status by ID.
+
+    Args:
+        task_id: UUID of the task.
+        session: Async database session.
+
+    Raises:
+        HTTPException 404: Task not found.
+
+    Returns:
+        TaskResponse with current status.
+    """
     task = await session.get(ConversionTask, task_id)
 
     if task is None:
