@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 

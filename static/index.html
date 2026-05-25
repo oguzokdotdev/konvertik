@@ -30,7 +30,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/main.css?v=20260526">
 
 </head>
 
@@ -84,28 +84,7 @@
 
         <!-- FORMATS (hidden by default) -->
         <div id="formatContainer" class="hidden">
-          <div class="space-y-4 mt-4">
-            <div>
-              <p class="text-xs font-bold tracking-[0.1em] text-zinc-400 uppercase mb-2">Видео</p>
-              <div class="flex flex-wrap gap-2">
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="mp4">MP4</button>
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="webm">WEBM</button>
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="avi">AVI</button>
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="mov">MOV</button>
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="mkv">MKV</button>
-              </div>
-            </div>
-            <div>
-              <p class="text-xs font-bold tracking-[0.1em] text-zinc-400 uppercase mb-2">Аудио</p>
-              <div class="flex flex-wrap gap-2">
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="mp3">MP3</button>
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="wav">WAV</button>
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="flac">FLAC</button>
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="ogg">OGG</button>
-                <button class="fmt px-3 py-2 text-xs border border-border rounded hover:border-accent hover:text-accent transition" data-f="aac">AAC</button>
-              </div>
-            </div>
-          </div>
+          <div class="space-y-4 mt-4" id="formatGroups"></div>
         </div>
 
         <!-- PROGRESS BAR -->
@@ -181,7 +160,7 @@
     </div>
   </div>
 
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20260526"></script>
 
 </body>
 </html>

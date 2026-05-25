@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
 
@@ -7,9 +8,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.db import get_session
 from src.models.task import ConversionTask
-from src.schemas.task import TaskResponse, UploadRequest
+from src.schemas.task import TaskResponse
+from src.services.formats import UnsupportedConversion, validate_conversion
+from src.services.probe import ProbeError, probe_media
 from src.services.quota import QuotaExceeded, check_daily_conversions, check_file_size
-from src.storage.local import save_upload
+from src.services.retention import expires_at_for_plan
+from src.storage.local import delete_file, save_upload
 from src.tasks.worker import convert_file_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -41,6 +45,12 @@ async def upload_file(
     Returns:
         TaskResponse with the created task ID and initial status.
     """
+    if plan_tier not in {"free", "pro"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Plan tier must be 'free' or 'pro'.",
+        )
+
     data = await file.read()
     file_size = len(data)
 
@@ -53,14 +63,40 @@ async def upload_file(
             detail=str(e),
         )
 
-    input_path = await save_upload(data, file.filename or "upload")
+    file_name = file.filename or "upload"
+    input_path = await save_upload(data, file_name)
+
+    try:
+        media_info = await probe_media(input_path, file_name)
+        normalized_target = validate_conversion(
+            media_info.kind,
+            media_info.source_format,
+            target_format,
+            has_audio=media_info.has_audio,
+        )
+    except ProbeError as e:
+        await delete_file(input_path)
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=str(e),
+        )
+    except UnsupportedConversion as e:
+        await delete_file(input_path)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
 
     task = ConversionTask(
-        file_name=file.filename or "upload",
+        file_name=file_name,
         file_size=file_size,
-        target_format=target_format,
+        target_format=normalized_target,
         plan_tier=plan_tier,
         input_path=str(input_path),
+        expires_at=expires_at_for_plan(
+            plan_tier,
+            now=datetime.now(timezone.utc),
+        ),
     )
     session.add(task)
     await session.commit()

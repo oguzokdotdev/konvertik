@@ -1,15 +1,18 @@
+import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
 from taskiq.brokers.inmemory_broker import InMemoryBroker
 
+from src.core.config import settings
 from src.core.db import get_session
 from src.models.task import ConversionTask
 from src.services.converter import ConversionError, convert
-from src.storage.local import delete_file, get_output_path
+from src.storage.local import get_output_path
 
 broker = InMemoryBroker()
+conversion_slots = asyncio.Semaphore(settings.max_parallel_conversions)
 
 
 @broker.task
@@ -30,14 +33,29 @@ async def convert_file_task(task_id: str) -> None:
         session.add(task)
         await session.commit()
 
+        if task.input_path is None:
+            task.status = "failed"
+            task.error_message = "Input file path is missing."
+            task.updated_at = datetime.now(timezone.utc)
+            session.add(task)
+            await session.commit()
+            return
+
         input_path = Path(task.input_path)
         output_path = get_output_path(input_path, task.target_format)
 
         try:
-            await convert(input_path, output_path)
+            async with conversion_slots:
+                await convert(
+                    input_path,
+                    output_path,
+                    task.target_format,
+                    task.plan_tier,
+                )
 
             task.status = "completed"
             task.output_path = str(output_path)
+            task.completed_at = datetime.now(timezone.utc)
 
         except ConversionError as e:
             task.status = "failed"
@@ -47,6 +65,3 @@ async def convert_file_task(task_id: str) -> None:
             task.updated_at = datetime.now(timezone.utc)
             session.add(task)
             await session.commit()
-
-            if task.status == "completed":
-                await delete_file(input_path)

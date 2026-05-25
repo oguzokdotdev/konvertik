@@ -34,7 +34,7 @@ async def download_file(
     if task.output_path is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Output file not found.",
+            detail="Output file not found or already expired.",
         )
 
     output_path = Path(task.output_path)

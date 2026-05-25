@@ -1,8 +1,137 @@
-body { background: #000000; }
+body {
+  --yellow: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  background: #000000;
+}
+
 .fmt { transition: all 0.15s; }
+.fmt.active {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
 .run-btn { transition: transform 0.1s ease, opacity 0.15s; }
 .run-btn:not(:disabled):hover { transform: scale(0.99); }
 .run-btn:not(:disabled):active { transform: scale(0.97); }
 .run-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
 .upload-zone { transition: border-color 0.2s, background 0.2s; }
-.upload-zone:hover { border-color: #3b82f6; background: rgba(59,130,246,0.03); }
+.upload-zone:hover,
+.upload-zone.over {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.03);
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #52525b;
+}
+
+.dot.running { background: var(--yellow); }
+.dot.done { background: var(--green); }
+.dot.fail { background: var(--red); }
+
+.hist-item {
+  border-bottom: 1px solid #1A1A1A;
+}
+
+.hist-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.625rem 0;
+}
+
+.hist-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hist-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #d4d4d8;
+}
+
+.hist-fmt {
+  color: #71717a;
+  text-transform: uppercase;
+}
+
+.hist-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid #3b82f6;
+  border-radius: 0.25rem;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.hist-download:hover {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.hist-download-empty {
+  border-color: transparent;
+}
+
+.hist-download-box {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: #3b82f6;
+}
+
+.hist-detail {
+  padding: 0 0 0.75rem;
+  font-size: 0.75rem;
+  color: #a1a1aa;
+}
+
+.hist-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.hist-error {
+  margin-top: 0.5rem;
+  color: #fca5a5;
+  line-height: 1.5;
+}
+
+.hidden {
+  display: none;
+}
+
+.chip {
+  border: 1px solid #27272a;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  color: #a1a1aa;
+}
+
+.chip.completed { color: var(--green); border-color: rgba(16, 185, 129, 0.4); }
+.chip.failed { color: var(--red); border-color: rgba(239, 68, 68, 0.4); }
+.chip.in_progress { color: var(--yellow); border-color: rgba(245, 158, 11, 0.4); }
+
+.no-hist {
+  font-size: 0.75rem;
+  color: #71717a;
+}
