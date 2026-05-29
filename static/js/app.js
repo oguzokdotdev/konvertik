@@ -390,6 +390,14 @@ function renderHistory() {
   });
 }
 
+function downloadIconSvg() {
+  return `<svg class="hist-download-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M12 3v10"/>
+    <path d="m8 9 4 4 4-4"/>
+    <path d="M5 21h14"/>
+  </svg>`;
+}
+
 function renderHistoryTask(task) {
   const expanded = expandedTaskId === task.id;
   const canDownload = task.status === 'completed';
@@ -405,8 +413,8 @@ function renderHistoryTask(task) {
           <span class="chip ${escapeHtml(task.status)}">${statusLabel(task.status)}</span>
         </button>
         ${canDownload ? `
-          <a class="hist-download" href="/download/${task.id}" download title="Скачать">
-            <span class="hist-download-box"></span>
+          <a class="hist-download" href="/download/${task.id}" download title="Скачать" aria-label="Скачать">
+            ${downloadIconSvg()}
           </a>
         ` : '<span class="hist-download hist-download-empty"></span>'}
       </div>

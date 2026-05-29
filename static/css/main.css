@@ -77,25 +77,30 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border: 1px solid #3b82f6;
   border-radius: 0.25rem;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  color: #3b82f6;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .hist-download:hover {
   background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border-color: #60a5fa;
 }
 
 .hist-download-empty {
   border-color: transparent;
+  pointer-events: none;
 }
 
-.hist-download-box {
-  width: 0.5rem;
-  height: 0.5rem;
-  background: #3b82f6;
+.hist-download-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  display: block;
 }
 
 .hist-detail {
