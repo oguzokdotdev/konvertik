@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
@@ -5,15 +6,21 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import text
 
+from src.core.config import settings
 from src.core.db import get_session
 from src.models.task import ConversionTask
 from src.schemas.task import TaskResponse
 from src.services.formats import UnsupportedConversion, validate_conversion
 from src.services.probe import ProbeError, probe_media
-from src.services.quota import QuotaExceeded, check_daily_conversions, check_file_size
-from src.services.retention import expires_at_for_plan
-from src.storage.local import delete_file, save_upload
+from src.services.quota import QuotaExceeded, check_daily_conversions
+from src.storage.local import (
+    EmptyUpload,
+    UploadTooLarge,
+    delete_file,
+    save_upload,
+)
 from src.tasks.worker import convert_file_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -39,72 +46,94 @@ async def upload_file(
         session: Async database session.
 
     Raises:
+        HTTPException 400: Invalid plan, empty file or unsupported conversion.
         HTTPException 413: File exceeds plan size limit.
+        HTTPException 415: Uploaded file is not supported media.
         HTTPException 429: Daily conversion limit reached.
 
     Returns:
         TaskResponse with the created task ID and initial status.
     """
-    if plan_tier not in {"free", "pro"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Plan tier must be 'free' or 'pro'.",
-        )
-
-    data = await file.read()
-    file_size = len(data)
-
     try:
-        await check_file_size(file_size, plan_tier)
-        await check_daily_conversions(session, plan_tier)
-    except QuotaExceeded as e:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(e),
+        if plan_tier not in {"free", "pro"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Plan tier must be 'free' or 'pro'.",
+            )
+
+        try:
+            await check_daily_conversions(session, plan_tier)
+        except QuotaExceeded as e:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=str(e),
+            ) from e
+
+        file_name = file.filename or "upload"
+
+        max_size_bytes = None
+        if plan_tier == "free":
+            max_size_bytes = settings.free_max_file_size_mb * 1024 * 1024
+
+        try:
+            input_path, file_size = await save_upload(
+                source=file,
+                filename=file_name,
+                max_size_bytes=max_size_bytes,
+            )
+        except UploadTooLarge as e:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=(
+                    "File exceeds free plan limit of "
+                    f"{settings.free_max_file_size_mb}MB."
+                ),
+            ) from e
+        except EmptyUpload as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is empty.",
+            ) from e
+
+        try:
+            media_info = await probe_media(input_path, file_name)
+            normalized_target = validate_conversion(
+                media_info.kind,
+                media_info.source_format,
+                target_format,
+                has_audio=media_info.has_audio,
+            )
+        except ProbeError as e:
+            await delete_file(input_path)
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=str(e),
+            ) from e
+        except UnsupportedConversion as e:
+            await delete_file(input_path)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            ) from e
+
+        task = ConversionTask(
+            file_name=file_name,
+            file_size=file_size,
+            target_format=normalized_target,
+            plan_tier=plan_tier,
+            input_path=str(input_path),
         )
 
-    file_name = file.filename or "upload"
-    input_path = await save_upload(data, file_name)
+        session.add(task)
+        await session.commit()
+        await session.refresh(task)
 
-    try:
-        media_info = await probe_media(input_path, file_name)
-        normalized_target = validate_conversion(
-            media_info.kind,
-            media_info.source_format,
-            target_format,
-            has_audio=media_info.has_audio,
-        )
-    except ProbeError as e:
-        await delete_file(input_path)
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=str(e),
-        )
-    except UnsupportedConversion as e:
-        await delete_file(input_path)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
+        await convert_file_task.kiq(str(task.id))
 
-    task = ConversionTask(
-        file_name=file_name,
-        file_size=file_size,
-        target_format=normalized_target,
-        plan_tier=plan_tier,
-        input_path=str(input_path),
-        expires_at=expires_at_for_plan(
-            plan_tier,
-            now=datetime.now(timezone.utc),
-        ),
-    )
-    session.add(task)
-    await session.commit()
-    await session.refresh(task)
+        return TaskResponse.model_validate(task)
 
-    await convert_file_task.kiq(str(task.id))
-
-    return TaskResponse.model_validate(task)
+    finally:
+        await file.close()
 
 
 @router.get("/", response_model=List[TaskResponse])
@@ -123,7 +152,7 @@ async def list_tasks(
     """
     statement = (
         select(ConversionTask)
-        .order_by(ConversionTask.created_at.desc())
+        .order_by(text("created_at DESC"))
         .limit(limit)
     )
     results = await session.exec(statement)

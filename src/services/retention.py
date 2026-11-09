@@ -1,9 +1,11 @@
+
 import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import text
 
 from src.core.config import settings
 from src.core.db import get_session
@@ -11,14 +13,19 @@ from src.models.task import ConversionTask
 from src.storage.local import delete_file
 
 
-def expires_at_for_plan(plan_tier: str, now: datetime | None = None) -> datetime:
+def expires_at_for_plan(
+    plan_tier: str,
+    now: datetime | None = None,
+) -> datetime:
     """Return file expiration datetime for a plan tier."""
     base = now or datetime.now(timezone.utc)
+
     minutes = (
         settings.pro_file_ttl_minutes
         if plan_tier == "pro"
         else settings.free_file_ttl_minutes
     )
+
     return base + timedelta(minutes=minutes)
 
 
@@ -26,7 +33,7 @@ async def mark_stale_tasks_failed() -> None:
     """Recover tasks left in progress across restarts."""
     async for session in get_session():
         statement = select(ConversionTask).where(
-            ConversionTask.status.in_(("pending", "in_progress"))
+            text("status IN ('pending', 'in_progress')")
         )
         results = await session.exec(statement)
         tasks = results.all()
@@ -35,11 +42,23 @@ async def mark_stale_tasks_failed() -> None:
             return
 
         now = datetime.now(timezone.utc)
+
         for task in tasks:
             task.status = "failed"
+
             if not task.error_message:
-                task.error_message = "Task interrupted by application restart."
+                task.error_message = (
+                    "Task interrupted by application restart."
+                )
+
+            # Незавершённая задача после перезапуска
+            # становится ошибочной, и для неё начинается TTL.
+            task.expires_at = expires_at_for_plan(
+                task.plan_tier,
+                now=now,
+            )
             task.updated_at = now
+
             session.add(task)
 
         await session.commit()
@@ -55,21 +74,22 @@ async def cleanup_expired_tasks() -> None:
 
 async def _cleanup_expired_tasks(session: AsyncSession) -> None:
     now = datetime.now(timezone.utc)
+
     statement = select(ConversionTask).where(
-        ConversionTask.expires_at.is_not(None),
-        ConversionTask.expires_at <= now,
-    )
+        text("expires_at IS NOT NULL"),
+        text("expires_at <= :now"),
+        text("status IN ('completed', 'failed')"),
+    ).params(now=now)
+
     results = await session.exec(statement)
     tasks = results.all()
 
     for task in tasks:
         await _expire_task_files(task)
+
         if task.status == "completed":
             task.status = "expired"
-        elif task.status in {"pending", "in_progress"}:
-            task.status = "failed"
-            if not task.error_message:
-                task.error_message = "Task expired before completion."
+
         task.updated_at = now
         session.add(task)
 
@@ -91,6 +111,7 @@ async def cleanup_loop(stop_event: asyncio.Event) -> None:
     """Run periodic retention cleanup inside the app process."""
     while not stop_event.is_set():
         await cleanup_expired_tasks()
+
         try:
             await asyncio.wait_for(
                 stop_event.wait(),
